@@ -1,0 +1,3 @@
+# VPX has no third-party dependencies — the engine, web layer, Turso client,
+# and calibration harness are all pure Python standard library.
+# This file exists so Vercel detects the Python runtime for api/*.py.

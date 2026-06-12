@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPX — Vehicle Pricing Simulator</title>
+<style>
+  :root{
+    --navy:#0A1628; --navy2:#13233b; --red:#EB0A1E; --ink:#1b2533; --muted:#7a8699;
+    --line:#e4e8ee; --bg:#eef1f5; --panel:#ffffff; --green:#1a8a4a; --redneg:#c5283d;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);font-size:14px}
+  .tnum{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  header{background:var(--navy);color:#fff;padding:14px 22px;display:flex;
+         align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+  header .logo{width:11px;height:11px;background:var(--red);border-radius:2px}
+  header h1{font-size:16px;font-weight:600;margin:0;letter-spacing:.3px}
+  header .sub{color:#9fb0c6;font-size:12px}
+  header .spacer{flex:1}
+  header button{font:inherit;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;
+                font-weight:600}
+  .btn-primary{background:var(--red);color:#fff}
+  .btn-ghost{background:#1c3050;color:#cdd8e6}
+  main{display:grid;grid-template-columns:340px 1fr;gap:18px;padding:18px;max-width:1500px;margin:0 auto}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+         box-shadow:0 1px 2px rgba(10,22,40,.04)}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+            margin:0;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .pad{padding:14px 16px}
+  .veh{padding:12px 16px;border-bottom:1px solid var(--line)}
+  .veh:last-child{border-bottom:0}
+  .veh .top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .veh .nm{font-weight:600}
+  .veh .seg{color:var(--muted);font-size:11px;margin-left:auto}
+  .ctrl{margin:8px 0}
+  .ctrl label{display:flex;justify-content:space-between;font-size:12px;color:#48566b;margin-bottom:3px}
+  .ctrl label b{font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--navy);height:18px}
+  .delta-up{color:var(--green)} .delta-dn{color:var(--redneg)} .flat{color:var(--muted)}
+  .badge{font-size:10px;padding:1px 6px;border-radius:9px;font-weight:600}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:1200px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .kpi .lab{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .kpi .val{font-size:23px;font-weight:650;margin:4px 0 2px}
+  .kpi .dl{font-size:12px;font-weight:600}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:12px}
+  .bar-row .nm{width:62px;color:#48566b}
+  .bar-wrap{flex:1;background:#f0f2f6;border-radius:4px;height:18px;overflow:hidden}
+  .bar{height:100%;border-radius:4px}
+  .bar-row .v{width:78px;text-align:right;color:#33415a}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .opt-box{padding:14px 16px}
+  .opt-row{display:flex;align-items:center;gap:10px;margin:9px 0}
+  .opt-row label{flex:1;font-size:12px;color:#48566b}
+  .uplift{font-size:18px;font-weight:700;margin:6px 0}
+  .constraint{font-size:12px;margin:5px 0;display:flex;gap:8px;align-items:center}
+  .tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.4px}
+  .tag.bind{background:#fbe3e6;color:var(--redneg)} .tag.slack{background:#eef1f5;color:var(--muted)}
+  .hint{font-size:11px;color:var(--muted);padding:0 16px 12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+  details summary{cursor:pointer;font-size:12px;color:var(--muted);padding:11px 16px;
+                  text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);
+         color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;opacity:0;
+         transition:opacity .25s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1}
+  .schip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
+         border-left-width:3px;border-radius:7px;padding:4px 5px 4px 8px;margin:0 8px 8px 0}
+  .schip .sw{width:8px;height:8px;border-radius:50%}
+  .schip .snm{border:0;font:inherit;font-weight:600;width:118px;background:transparent;color:var(--ink)}
+  .schip .snm:focus{outline:1px solid var(--line);border-radius:3px}
+  .schip button{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:12px;
+                padding:2px 5px;border-radius:4px;line-height:1}
+  .schip button:hover{background:#f0f2f6;color:var(--ink)}
+  #ctable td{vertical-align:top} #ctable td .tnum{font-weight:600}
+  #ctable .bestcell{background:#eef7f0;border-radius:4px}
+</style></head>
+<body>
+<header>
+  <div class="logo"></div>
+  <h1>VPX</h1><span class="sub">Vehicle Pricing Simulator &amp; Optimizer</span>
+  <div class="spacer"></div>
+  <button class="btn-ghost" id="save">💾 Save scenario</button>
+  <button class="btn-ghost" id="reset">Reset</button>
+  <button class="btn-primary" id="optimize">⚡ Optimize</button>
+</header>
+
+<main>
+  <!-- LEFT: configuration -->
+  <div>
+    <div class="panel" style="margin-bottom:18px">
+      <h2>Optimizer</h2>
+      <div class="opt-box">
+        <div class="opt-row"><label>Market-share floor</label>
+          <span class="tnum" id="sfval">40%</span></div>
+        <input type="range" id="sfloor" min="30" max="45" step="1" value="40">
+        <div class="opt-row" style="margin-top:10px"><label>Subsidy budget</label>
+          <span class="tnum" id="budval">$200M</span></div>
+        <input type="range" id="budget" min="50" max="500" step="10" value="200">
+        <div id="optout" style="margin-top:12px;display:none">
+          <div class="uplift" id="uplift"></div>
+          <div id="constraints"></div>
+          <div class="hint" style="padding:8px 0 0">Sliders below set to the recommended plan.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="vehpanel">
+      <h2>Levers by vehicle</h2>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <details><summary>Advanced parameters</summary>
+        <div class="pad">
+          <div class="ctrl"><label>Category elasticity <b id="elv" class="tnum"></b></label>
+            <input type="range" id="seg_elasticity" min="-1.5" max="-0.2" step="0.05"></div>
+          <div class="ctrl"><label>Price sensitivity (β) <b id="bpv" class="tnum"></b></label>
+            <input type="range" id="beta_price" min="0.00004" max="0.0003" step="0.00001"></div>
+          <div class="ctrl"><label>Market APR <b id="mrv" class="tnum"></b></label>
+            <input type="range" id="market_rate" min="0.03" max="0.12" step="0.001"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- RIGHT: results -->
+  <div>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid2" style="margin-top:18px">
+      <div class="panel">
+        <h2>Revenue by vehicle</h2>
+        <div class="pad" id="revbars"></div>
+      </div>
+      <div class="panel">
+        <h2>Revenue by region</h2>
+        <div class="pad" id="regbars"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>By vehicle</h2>
+      <div class="pad" style="padding-top:4px">
+        <table id="vtable"><thead><tr>
+          <th>Model</th><th>Units</th><th>Revenue</th><th>OEM Net$</th>
+          <th>Margin%</th><th>Share</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel" id="comparePanel" style="margin-top:18px">
+      <h2>Scenario comparison
+        <span id="scount" class="flat" style="text-transform:none;letter-spacing:0;font-weight:400">— none saved</span></h2>
+      <div class="pad" id="compareEmpty">
+        <div class="hint" style="padding:0">Tune the levers (or run <b>Optimize</b>), then hit
+          <b>💾 Save scenario</b> to capture it. Compare up to 3 side by side against baseline —
+          KPI table plus a normalized radar overlay.</div>
+      </div>
+      <div id="compareBody" style="display:none">
+        <div class="pad" style="padding-bottom:4px" id="schips"></div>
+        <div class="grid2" style="padding:0 16px 16px;align-items:center">
+          <table id="ctable"></table>
+          <div id="radarWrap" style="display:flex;justify-content:center"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let META=null, STATE={}, PARAMS={}, BASE=null, timer=null;
+let LAST_RESULT=null, SCENARIOS=[], SERVER=false;
+const SCOLORS=['#EB0A1E','#2e8b8b','#c08a2e'];
+
+const fmtM = x => '$'+(x/1e6).toLocaleString(undefined,{maximumFractionDigits:1})+'M';
+const fmtU = x => Math.round(x).toLocaleString();
+const pct = x => (x*100).toFixed(1)+'%';
+
+function deltaHTML(cur, base, opts={}){
+  const d = cur-base; const goodUp = opts.goodUp!==false;
+  if(Math.abs(d) < (opts.eps||1e-6)) return '<span class="flat">— flat</span>';
+  const up = d>0, good = (up===goodUp);
+  const cls = good?'delta-up':'delta-dn'; const arr = up?'▲':'▼';
+  let v;
+  if(opts.pct) v = (d>0?'+':'')+(d*100).toFixed(1)+'pp';
+  else if(opts.money) v = (d>0?'+':'')+ (d/1e6).toLocaleString(undefined,{maximumFractionDigits:1})+'M';
+  else v = (d>0?'+':'')+Math.round(d).toLocaleString();
+  return '<span class="'+cls+'">'+arr+' '+v+'</span>';
+}
+
+const KPI_DEFS = [
+  {key:'revenue', lab:'Total Revenue', fmt:fmtM, o:{money:true}},
+  {key:'margin_pct', lab:'Blended Margin', fmt:pct, o:{pct:true}},
+  {key:'contribution', lab:'Contribution', fmt:fmtM, o:{money:true}},
+  {key:'total_units', lab:'Units / mo', fmt:fmtU, o:{}},
+  {key:'market_share', lab:'Market Share', fmt:pct, o:{pct:true}},
+  {key:'residual_risk', lab:'Residual Risk', fmt:fmtM, o:{money:true, goodUp:false}},
+];
+
+function renderKPIs(r){
+  $('#kpis').innerHTML = KPI_DEFS.map(d=>{
+    const cur=r.kpis[d.key], base=BASE.kpis[d.key];
+    return `<div class="kpi"><div class="lab">${d.lab}</div>
+      <div class="val tnum">${d.fmt(cur)}</div>
+      <div class="dl">${deltaHTML(cur,base,d.o)}</div></div>`;
+  }).join('');
+}
+
+function bars(el, items, valf){
+  const max = Math.max(...items.map(i=>i.revenue))||1;
+  el.innerHTML = items.map(i=>`<div class="bar-row">
+    <div class="nm">${i.name}</div>
+    <div class="bar-wrap"><div class="bar" style="width:${i.revenue/max*100}%;
+      background:${i.color||'#3b6ea5'}"></div></div>
+    <div class="v tnum">${fmtM(i.revenue)}</div></div>`).join('');
+}
+
+function renderTable(r){
+  $('#vtable tbody').innerHTML = r.vehicles.map(v=>`<tr>
+    <td><span class="dot" style="display:inline-block;background:${v.color};margin-right:6px"></span>${v.name}</td>
+    <td class="tnum">${fmtU(v.units)}</td>
+    <td class="tnum">${fmtM(v.revenue)}</td>
+    <td class="tnum">$${Math.round(v.oem_net).toLocaleString()}</td>
+    <td class="tnum">${pct(v.margin_pct)}</td>
+    <td class="tnum">${pct(v.share)}</td></tr>`).join('');
+}
+
+function render(r){
+  LAST_RESULT = r;
+  renderKPIs(r); renderTable(r);
+  bars($('#revbars'), r.vehicles);
+  bars($('#regbars'), r.regions.map(x=>({name:x.name,revenue:x.revenue,color:'#46506a'})));
+}
+
+// ---- scenario save & comparison -----------------------------------------
+const CMET=[
+  {key:'revenue', label:'Revenue', fmt:fmtM, better:'up', o:{money:true}},
+  {key:'margin_pct', label:'Gross Margin', fmt:pct, better:'up', o:{pct:true}},
+  {key:'avg_conversion', label:'Conversion', fmt:pct, better:'up', o:{pct:true}},
+  {key:'avg_turnover_days', label:'Turnover', fmt:x=>x.toFixed(0)+'d', better:'down', o:{goodUp:false}},
+  {key:'market_share', label:'Mkt Share', fmt:pct, better:'up', o:{pct:true}},
+];
+
+// Scenarios persist server-side (Turso) when available, else browser localStorage.
+function normalizeServer(list){ return list.map((s,i)=>(
+  {id:s.id, name:s.name, color:SCOLORS[i%3], levers:s.levers, params:s.params, kpis:s.kpis})); }
+function persistLocal(){ try{ localStorage.setItem('vpx_scenarios', JSON.stringify(SCENARIOS)); }catch(e){} }
+async function loadStore(){
+  try{ const r=await fetch('/api/scenarios');
+    if(r.ok){ const d=await r.json(); if(d.available){ SERVER=true; SCENARIOS=normalizeServer(d.scenarios); return; } }
+  }catch(e){}
+  SERVER=false;
+  try{ const s=localStorage.getItem('vpx_scenarios'); if(s){ SCENARIOS=JSON.parse(s);
+    SCENARIOS.forEach((x,i)=>x.color=SCOLORS[i%3]); } }catch(e){}
+}
+
+async function saveScenario(){
+  if(!LAST_RESULT){ return; }
+  const rec={ name:'Scenario '+(SCENARIOS.length+1), color:SCOLORS[SCENARIOS.length%3],
+    levers:JSON.parse(JSON.stringify(STATE)), params:JSON.parse(JSON.stringify(PARAMS)), kpis:LAST_RESULT.kpis };
+  if(SERVER){
+    const r=await fetch('/api/scenarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+    const d=await r.json(); SCENARIOS=normalizeServer(d.scenarios);
+  } else {
+    if(SCENARIOS.length>=3){ toast('Max 3 scenarios — delete one to save another.'); return; }
+    SCENARIOS.push({id:'s'+Date.now(), ...rec}); persistLocal();
+  }
+  renderCompare(); toast('Scenario saved.');
+}
+async function delScenario(id){
+  if(SERVER){
+    const r=await fetch('/api/scenarios?id='+encodeURIComponent(id),{method:'DELETE'});
+    const d=await r.json(); SCENARIOS=normalizeServer(d.scenarios);
+  } else {
+    SCENARIOS=SCENARIOS.filter(s=>s.id!==id); SCENARIOS.forEach((s,i)=>s.color=SCOLORS[i%3]); persistLocal();
+  }
+  renderCompare();
+}
+function renameScenario(id,name){ const s=SCENARIOS.find(x=>x.id===id); if(!s) return; s.name=name;
+  if(SERVER){ fetch('/api/scenarios',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:s.id,name:s.name,color:s.color,levers:s.levers,params:s.params,kpis:s.kpis})}); }
+  else { persistLocal(); } }
+function loadScenario(id){ const s=SCENARIOS.find(x=>x.id===id); if(!s) return;
+  STATE=JSON.parse(JSON.stringify(s.levers)); PARAMS=JSON.parse(JSON.stringify(s.params));
+  $('#vehpanel').innerHTML='<h2>Levers by vehicle</h2>'+META.vehicles.map(vehRow).join('');
+  ['seg_elasticity','beta_price','market_rate'].forEach(k=>$('#'+k).value=PARAMS[k]);
+  bindVehInputs(); syncLabels(); simulate(); toast('Loaded '+s.name+' onto the sliders.'); }
+
+function radarSVG(cols){
+  const A=CMET.length, R=86, cx=125, cy=118;
+  const norm=CMET.map(m=>{ const vs=cols.map(c=>c.kpis[m.key]);
+    const mn=Math.min(...vs), mx=Math.max(...vs);
+    return cols.map(c=>{ if(mx-mn<1e-12) return 0.6; const t=(c.kpis[m.key]-mn)/(mx-mn);
+      return 0.25+0.75*(m.better==='up'?t:1-t); }); });
+  const ang=i=>(-90+i*360/A)*Math.PI/180;
+  const pt=(i,r)=>[cx+Math.cos(ang(i))*R*r, cy+Math.sin(ang(i))*R*r];
+  let g='';
+  for(const rr of [0.25,0.5,0.75,1]){ let p=''; for(let i=0;i<A;i++){const[x,y]=pt(i,rr);
+    p+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);} g+=`<path d="${p}Z" fill="none" stroke="#e9edf2"/>`; }
+  for(let i=0;i<A;i++){ const[x,y]=pt(i,1); g+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e9edf2"/>`;
+    const[lx,ly]=pt(i,1.2); g+=`<text x="${lx}" y="${ly}" font-size="9" fill="#7a8699" text-anchor="middle" dominant-baseline="middle">${CMET[i].label}</text>`; }
+  cols.forEach((c,ci)=>{ let p=''; for(let i=0;i<A;i++){const[x,y]=pt(i,norm[i][ci]);
+    p+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}
+    g+=`<path d="${p}Z" fill="${c.color}" fill-opacity="${c.base?0.03:0.13}" stroke="${c.color}" stroke-width="${c.base?1:1.7}" ${c.base?'stroke-dasharray="3 3"':''}/>`; });
+  return `<svg viewBox="0 0 250 244" width="250" height="244">${g}</svg>`;
+}
+
+function renderCompare(){
+  $('#scount').textContent = SCENARIOS.length ? '— '+SCENARIOS.length+' saved (max 3)' : '— none saved';
+  const has = SCENARIOS.length>0;
+  $('#compareEmpty').style.display = has?'none':'block';
+  $('#compareBody').style.display = has?'block':'none';
+  if(!has) return;
+  $('#schips').innerHTML = SCENARIOS.map(s=>`<span class="schip" style="border-left-color:${s.color}">
+    <span class="sw" style="background:${s.color}"></span>
+    <input class="snm" data-id="${s.id}" value="${s.name.replace(/"/g,'&quot;')}">
+    <button data-load="${s.id}" title="Load onto sliders">↺</button>
+    <button data-del="${s.id}" title="Delete">✕</button></span>`).join('');
+  $('#schips').querySelectorAll('.snm').forEach(i=>i.onchange=e=>renameScenario(e.target.dataset.id,e.target.value));
+  $('#schips').querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>loadScenario(b.dataset.load));
+  $('#schips').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delScenario(b.dataset.del));
+
+  const cols=[{name:'Baseline',color:'#7a8699',kpis:BASE.kpis,base:true},
+              ...SCENARIOS.map(s=>({name:s.name,color:s.color,kpis:s.kpis}))];
+  let h='<thead><tr><th>KPI</th>'+cols.map(c=>`<th style="color:${c.color}">${c.base?c.name:c.name}</th>`).join('')+'</tr></thead><tbody>';
+  for(const m of CMET){
+    const vals=cols.map(c=>c.kpis[m.key]);
+    const best = m.better==='up'?Math.max(...vals):Math.min(...vals);
+    h+='<tr><td>'+m.label+'</td>'+cols.map(c=>{
+      const v=c.kpis[m.key]; const isBest=cols.length>1 && Math.abs(v-best)<1e-9;
+      const dl=c.base?'':'<br>'+deltaHTML(v,BASE.kpis[m.key],m.o);
+      return `<td class="${isBest?'bestcell':''}"><span class="tnum">${m.fmt(v)}</span>${dl}</td>`;
+    }).join('')+'</tr>';
+  }
+  $('#ctable').innerHTML=h+'</tbody>';
+  $('#radarWrap').innerHTML=radarSVG(cols);
+}
+
+function collect(){
+  const levers={};
+  for(const v of META.vehicles){
+    const s=STATE[v.vid];
+    levers[v.vid]={
+      price_mult_delta:s.price/100,
+      cashback:s.cashback,
+      apr:s.apr, subvented:s.apr < PARAMS.market_rate - 1e-9,
+      dos:s.dos,
+      ev_credit: v.ev_eligible ? s.ev_credit : 0,
+    };
+  }
+  return {levers, params:PARAMS};
+}
+
+async function simulate(){
+  const r = await (await fetch('/api/simulate',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())})).json();
+  render(r);
+}
+function schedule(){ clearTimeout(timer); timer=setTimeout(simulate,150); }  // debounce
+
+function vehRow(v){
+  const s=STATE[v.vid];
+  const ev = v.ev_eligible ? `
+    <div class="ctrl"><label>Federal EV credit <b class="tnum" id="ev_${v.vid}">$${s.ev_credit}</b></label>
+      <input type="range" data-v="${v.vid}" data-k="ev_credit" min="0" max="7500" step="3750" value="${s.ev_credit}"></div>`:'';
+  return `<div class="veh">
+    <div class="top"><span class="dot" style="background:${v.color}"></span>
+      <span class="nm">${v.name}</span><span class="seg">${v.segment} · $${v.msrp.toLocaleString()}</span></div>
+    <div class="ctrl"><label>Price Δ <b class="tnum" id="price_${v.vid}">${s.price>0?'+':''}${s.price}%</b></label>
+      <input type="range" data-v="${v.vid}" data-k="price" min="-30" max="30" step="1" value="${s.price}"></div>
+    <div class="ctrl"><label>Cash back <b class="tnum" id="cashback_${v.vid}">$${s.cashback}</b></label>
+      <input type="range" data-v="${v.vid}" data-k="cashback" min="0" max="5000" step="250" value="${s.cashback}"></div>
+    <div class="ctrl"><label>Offered APR <b class="tnum" id="apr_${v.vid}"></b></label>
+      <input type="range" data-v="${v.vid}" data-k="apr" min="0" max="${(PARAMS.market_rate*100).toFixed(1)}" step="0.1" value="${(s.apr*100).toFixed(1)}"></div>
+    <div class="ctrl"><label>Inventory <b id="dos_${v.vid}"></b></label>
+      <input type="range" data-v="${v.vid}" data-k="dos" min="0" max="120" step="5" value="${s.dos}"></div>
+    ${ev}</div>`;
+}
+
+function invBadge(d){
+  if(d<30) return '<span class="badge" style="background:#e3f3e9;color:#1a8a4a">🟢 Lean</span>';
+  if(d>90) return '<span class="badge" style="background:#fbe3e6;color:#c5283d">🔴 Overstocked</span>';
+  return '<span class="badge" style="background:#fdf3e0;color:#b07d1e">🟡 Balanced</span>';
+}
+function aprLabel(v){
+  const s=STATE[v]; const mkt=PARAMS.market_rate;
+  const el=$('#apr_'+v); if(!el) return;
+  if(s.apr < mkt-1e-9) el.innerHTML = (s.apr*100).toFixed(1)+'% <span class="badge" style="background:#fbe3e6;color:#c5283d">SUBVENTED −'+((mkt-s.apr)*100).toFixed(1)+'pts</span>';
+  else el.innerHTML = '<span class="flat">market ('+(mkt*100).toFixed(1)+'%)</span>';
+}
+
+function syncLabels(){
+  for(const v of META.vehicles){
+    const s=STATE[v.vid];
+    $('#price_'+v.vid).textContent=(s.price>0?'+':'')+s.price+'%';
+    $('#cashback_'+v.vid).textContent='$'+s.cashback;
+    $('#dos_'+v.vid).innerHTML=s.dos+' days '+invBadge(s.dos);
+    if(v.ev_eligible) $('#ev_'+v.vid).textContent='$'+s.ev_credit;
+    aprLabel(v.vid);
+  }
+  $('#elv').textContent=PARAMS.seg_elasticity.toFixed(2);
+  $('#bpv').textContent=PARAMS.beta_price.toFixed(5);
+  $('#mrv').textContent=(PARAMS.market_rate*100).toFixed(1)+'%';
+}
+
+function bindVehInputs(){
+  $('#vehpanel').querySelectorAll('input[type=range]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const v=e.target.dataset.v, k=e.target.dataset.k, val=parseFloat(e.target.value);
+      if(k==='price') STATE[v].price=val;
+      else if(k==='apr') STATE[v].apr=val/100;
+      else STATE[v][k]=val;
+      syncLabels(); schedule();
+    });
+  });
+}
+
+function defaults(v){ return {price:0,cashback:0,apr:PARAMS.market_rate,dos:50,ev_credit:0}; }
+
+function resetAll(){
+  for(const v of META.vehicles) STATE[v.vid]=defaults(v);
+  PARAMS={...META.defaults};
+  $('#vehpanel').innerHTML='<h2>Levers by vehicle</h2>'+META.vehicles.map(vehRow).join('');
+  ['seg_elasticity','beta_price','market_rate'].forEach(k=>$('#'+k).value=PARAMS[k]);
+  bindVehInputs(); syncLabels(); $('#optout').style.display='none'; simulate();
+}
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600); }
+
+async function runOptimize(){
+  $('#optimize').textContent='⏳ Optimizing…'; $('#optimize').disabled=true;
+  const body={share_floor:parseInt($('#sfloor').value)/100,
+              subsidy_budget_usd:parseInt($('#budget').value)*1e6};
+  const r = await (await fetch('/api/optimize',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+  // apply recommended levers to sliders
+  for(const v of META.vehicles){
+    const L=r.levers[v.vid]; const s=STATE[v.vid];
+    s.price=Math.round(L.price_mult_delta*100);
+    s.apr = (L.subvented && L.apr!=null) ? L.apr : PARAMS.market_rate;
+  }
+  $('#vehpanel').innerHTML='<h2>Levers by vehicle</h2>'+META.vehicles.map(vehRow).join('');
+  bindVehInputs(); syncLabels();
+  // uplift + constraints
+  const up=r.uplift_usd, cls=up>=0?'delta-up':'delta-dn';
+  $('#uplift').innerHTML=`<span class="${cls}">${up>=0?'+':''}${fmtM(up).slice(1)} contribution `+
+    `(${r.uplift_pct>=0?'+':''}${r.uplift_pct.toFixed(1)}%)</span>`;
+  const b=r.binding;
+  const c=(bind,lab,det)=>`<div class="constraint"><span class="tag ${bind?'bind':'slack'}">${bind?'BINDING':'SLACK'}</span> ${lab} <span class="flat tnum">${det}</span></div>`;
+  $('#constraints').innerHTML =
+    c(b.share,'Share floor',b.share_detail) +
+    c(b.capacity.length>0,'Capacity', b.capacity.length?b.capacity.join(', '):'all under ceiling') +
+    c(b.budget,'Subsidy budget',b.budget_detail);
+  $('#optout').style.display='block';
+  render(r.result);
+  toast('Optimized — '+r.evals+' evaluations. Sliders updated to the recommended plan.');
+  $('#optimize').textContent='⚡ Optimize'; $('#optimize').disabled=false;
+}
+
+async function init(){
+  META = await (await fetch('/api/meta')).json();
+  BASE = META.baseline;
+  resetAll();
+  await loadStore(); renderCompare();
+  $('#reset').onclick=resetAll;
+  $('#save').onclick=saveScenario;
+  $('#optimize').onclick=runOptimize;
+  $('#sfloor').oninput=e=>$('#sfval').textContent=e.target.value+'%';
+  $('#budget').oninput=e=>$('#budval').textContent='$'+e.target.value+'M';
+  ['seg_elasticity','beta_price','market_rate'].forEach(k=>{
+    $('#'+k).addEventListener('input',e=>{ PARAMS[k]=parseFloat(e.target.value); syncLabels();
+      // market_rate change shifts APR ceilings -> rebuild rows
+      if(k==='market_rate'){ for(const v of META.vehicles) if(STATE[v.vid].apr>PARAMS.market_rate) STATE[v.vid].apr=PARAMS.market_rate;
+        $('#vehpanel').innerHTML='<h2>Levers by vehicle</h2>'+META.vehicles.map(vehRow).join(''); bindVehInputs(); syncLabels(); }
+      schedule(); });
+  });
+}
+init();
+</script>
+</body></html>

@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.vercel/
+.DS_Store
+sample_history.csv
+*.env
+.env
+.env.local
