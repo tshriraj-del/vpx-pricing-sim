@@ -1,0 +1,12 @@
+# Render static-site deployment for the VPX demo.
+# Import repo → Render will auto-detect this file.
+# No build step, no env vars needed — just serves index.html.
+services:
+  - type: web
+    name: vpx-pricing-demo
+    runtime: static
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
