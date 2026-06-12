@@ -20,7 +20,7 @@ except Exception:                      # pragma: no cover
 
 SEG_COLOR = {"Sedan": "#3b6ea5", "SUV": "#2e8b8b", "Truck": "#c08a2e", "Hybrid": "#3f9d6c"}
 
-_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public", "index.html")
+_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
 
 def page_html() -> bytes:

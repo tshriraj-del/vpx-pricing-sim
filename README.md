@@ -136,6 +136,11 @@ is what real OEM pricing science uses. When real history with genuine
 price/incentive **variation** is available, the same harness fits it — see the
 identification note in `--make-template`.
 
+> **Deep dive:** what we'd actually use with real data — a BLP random-coefficients
+> logit with instruments for price, and where ML legitimately fits (DML,
+> hierarchical Bayes, forecasting the nuisance layer) — is written up in
+> [`docs/demand-modeling-with-real-data.md`](docs/demand-modeling-with-real-data.md).
+
 ---
 
 ## Repository layout
@@ -146,9 +151,9 @@ vpx_web.py          Engine ↔ JSON glue + scenario endpoints (shared local/serv
 vpx_app.py          Local dev server (http.server)
 vpx_store.py        Append-only scenario store on Turso (libSQL HTTP API)
 vpx_calibrate.py    Calibration + backtest harness
-public/index.html   Single-page UI (vanilla JS, CSS/SVG charts)
+index.html          Single-page UI (vanilla JS, CSS/SVG charts) — served at /
 api/*.py            Vercel serverless functions wrapping vpx_web
-vercel.json         Serverless config (bundles vpx_*.py into the functions)
+docs/               Deep-dive notes (e.g. demand modeling with real data)
 ```
 
 ---
@@ -174,7 +179,8 @@ python3 vpx_calibrate.py --data history.csv   # calibrate on a real panel
 ## Deploy on Vercel
 
 1. Import the repo at **vercel.com/new** — no build command, no framework
-   preset (it's static `public/` + Python `api/` functions). Deploy.
+   preset. It's zero-config: `index.html` is served at `/` and each `api/*.py`
+   is an auto-detected Python serverless function. Deploy.
 2. **That's it.** It runs with **zero environment variables**; saved scenarios
    persist per-browser via `localStorage`.
 
