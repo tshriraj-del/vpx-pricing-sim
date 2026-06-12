@@ -3,19 +3,19 @@
 A pricing-strategy tool for vehicle OEMs. Configure pricing / incentive /
 finance / inventory levers across nameplates and regions, watch projected
 business outcomes update in real time, and let a constrained optimizer
-recommend the **profit-maximizing plan**. Save scenarios and compare them
-side by side.
+recommend the **profit-maximizing plan**. Save scenarios and compare them side
+by side.
 
-Built as an economically rigorous prototype with **zero third-party
-dependencies** — the engine, the optimizer, the estimation/calibration layer,
-and the web server are all pure Python standard library; the UI is vanilla JS
-with CSS/SVG charts.
+**It's a single self-contained `index.html`** — the whole engine (simulation +
+optimizer) runs client-side in vanilla JavaScript. No backend, no build step, no
+dependencies. Deploys as a static site anywhere; it even works by opening the
+file directly.
 
-> **Honest scope.** Every number here comes from a **synthetic dataset with
-> assumed coefficients**. The economics are internally consistent and the
-> methods are real, but the magnitudes are *not* calibrated to any live market.
-> Use it to reason about pricing, not to set real prices — until fit to data
-> via the calibration harness (below).
+> **Honest scope.** Every number comes from a **synthetic dataset with assumed
+> coefficients**. The economics are internally consistent and the methods are
+> real, but the magnitudes are *not* calibrated to any live market. Use it to
+> reason about pricing, not to set real prices — until fit to data via the
+> calibration harness in `python/`.
 
 ---
 
@@ -23,44 +23,45 @@ with CSS/SVG charts.
 
 | Layer | Choice | Notes |
 |-------|--------|-------|
-| **Engine** | Python 3.9+ **stdlib only** | Vectorless, pure functions. Full 6-vehicle × 5-region matrix solves in <50 ms. |
+| **App** | Single static `index.html` | Vanilla JS + Tailwind-ish CSS + inline SVG charts. No framework, no build. |
+| **Engine** | Client-side JS port of the Python reference | Deterministic, runs in the browser. Verified to reproduce the Python numbers exactly. |
 | **Demand model** | Nested multinomial **logit** (discrete choice) | Category size × within-segment softmax. |
-| **Optimizer** | **Hooke–Jeeves** pattern search (derivative-free), feasibility-first | Constrained, multi-start. No SciPy. |
-| **Calibration** | **Maximum likelihood** (Adam) + two-way **fixed-effects** regression | Hand-rolled in stdlib; no numpy. |
-| **Web layer** | `http.server` (local) / **Vercel** Python serverless functions (prod) | Shared glue in `vpx_web.py`. |
-| **Frontend** | Vanilla **JS** + Tailwind-ish CSS + inline **SVG** charts | Single static `public/index.html`, no build step. |
-| **Storage** | **Turso** (libSQL) over its HTTP API, optional | Append-only, versioned. Falls back to browser `localStorage` if unconfigured. |
-| **Deploy** | Vercel (static `public/` + `api/*.py`) | No build command, no env vars required. |
+| **Optimizer** | **Hooke–Jeeves** pattern search, feasibility-first | Constrained, multi-start; ~870 evaluations in <100 ms. |
+| **Scenarios** | Browser `localStorage` | Per-browser save / compare. No database, no accounts. |
+| **Reference + calibration** | Python 3.9+ **stdlib only** (`python/`) | The validated source of truth + the estimation/backtest harness. |
+| **Deploy** | Any static host (Vercel, Netlify, GitHub Pages…) | Zero config, no build command, no environment variables. |
 
-No `requirements.txt` dependencies — the file exists only so Vercel detects the
-Python runtime.
+Why client-side? The simulation and optimization are pure, fast functions —
+there's nothing a server needs to do. Running them in the browser makes the demo
+trivially deployable and dependency-free. The Python in `python/` remains the
+**reference implementation** (with a 15-invariant self-test) that the JS engine
+is validated against, plus the calibration harness for fitting to real data.
 
 ---
 
 ## Modeling & methods ("the ML details")
 
 This is a **structural choice model**, not a black-box predictor — every
-coefficient is interpretable and identifiable. The pieces:
+coefficient is interpretable and identifiable.
 
-### 1. Two prices, never one
-The OEM's realized price and the buyer's perceived price are tracked
-separately, because conflating them mis-states revenue:
+### Two prices, never one
+The OEM's realized price and the buyer's perceived price are tracked separately,
+because conflating them mis-states revenue:
 
 ```
 oem_net_price   = list_price − OEM-funded incentives        → drives REVENUE & MARGIN
 consumer_price  = oem_net_price − EV credit − state rebate   → drives DEMAND only
 ```
 
-Government EV credits and state rebates lower what the *buyer* perceives (so
-they lift demand through the choice model) but do **not** reduce OEM revenue.
+Government EV credits / state rebates lower what the *buyer* perceives (lifting
+demand via the choice model) but do **not** reduce OEM revenue.
 
-### 2. Demand — nested multinomial logit
-**Stage 1 — category size** (how big the segment is), a constant-elasticity
-shifter with seasonality and macro:
+### Demand — nested multinomial logit
+**Stage 1 — category size**, a constant-elasticity shifter with seasonality and
+macro:
 
 ```
-segment_volume = base_size[seg,region]
-               × seasonal[month] × macro_adjustment(cpi, rate, fuel, …)
+segment_volume = base_size[seg,region] × seasonal × macro
                × (segment_avg_price / reference_price) ^ segment_elasticity
 ```
 
@@ -68,77 +69,47 @@ segment_volume = base_size[seg,region]
 competitors:
 
 ```
-U_j      = α_j − β_price·consumer_price_j
-                + β_apr·(market_rate − apr_j)
-                + β_ev·ev_infra_j
-share_j  = exp(U_j) / Σ_k exp(U_k)
-units_j  = segment_volume × share_j
+U_j     = α_j − β_price·consumer_price_j + β_apr·(market_rate − apr_j) + β_ev·ev_infra_j
+share_j = exp(U_j) / Σ_k exp(U_k)
+units_j = segment_volume × share_j
 ```
 
-Why a logit rather than ad-hoc elasticity formulas:
+Why a logit rather than ad-hoc elasticity formulas: volume and share are **one
+model** (they can't disagree); share is **bounded** in (0,1) (no "lower price →
+infinite volume"); **cross-elasticity is automatic** (shared denominator); and
+it's the **industry-standard** approach to differentiated-product demand. Other
+modeled effects: leasing & residual-value risk, finance subvention, continuous
+inventory pressure, FX translation.
 
-- **Volume and share are one model** — `share × segment_size = units` by
-  construction, so they can never disagree.
-- **Bounded** — `share ∈ (0,1)`, so price cuts have diminishing returns (no
-  "lower price → infinite volume" degeneracy).
-- **Cross-elasticity is free** — dropping one nameplate's price pulls share
-  from its siblings *and* competitors through the shared denominator.
-- It's the **industry-standard** approach to differentiated-product demand
-  (discrete choice / BLP-style).
-
-Other modeled effects: leasing & residual-value risk, finance subvention
-(labeled approximation), continuous inventory pressure, and FX as a
-consolidated-USD translation layer.
-
-### 3. Optimizer — constrained, derivative-free
-The inverse problem: instead of hand-tuning sliders, solve for the lever
-vector that maximizes contribution margin:
-
+### Optimizer — constrained, derivative-free
 ```
 maximize    Σ contribution_margin
-over        price_delta[v]      ∈ [−30%, +30%]
-            apr_subvention[v]   ∈ [0, market_rate]
-subject to  oem_net ≥ cogs            (never below cost)
-            units   ≤ capacity        (factory ceiling)
-            market_share ≥ floor      (brand-presence guardrail)
-            Σ finance_subsidy ≤ budget
-method      Hooke–Jeeves pattern search, feasibility-first comparator,
-            3-point multi-start  (≈ 870 evals, <0.1 s, no SciPy)
+over        price_delta[v] ∈ [−30%, +30%],  apr_subvention[v] ∈ [0, market_rate]
+subject to  oem_net ≥ cogs;  units ≤ capacity;  market_share ≥ floor;  Σ subsidy ≤ budget
+method      Hooke–Jeeves pattern search, feasibility-first comparator, 3-point multi-start
 ```
 
-Tractable precisely because the logit demand is smooth and bounded. The output
-reports the recommended plan, the contribution uplift, and **which constraint
-binds** (e.g. "share floor binds; capacity slack").
+Tractable precisely because the logit demand is smooth and bounded. It reports
+the recommended plan, the contribution uplift, and **which constraint binds**.
 
-### 4. Calibration — estimation, with validation
-`vpx_calibrate.py` turns assumed coefficients into *fitted* ones:
+### Calibration — estimation, with validation (`python/vpx_calibrate.py`)
+- **Logit coefficients** by **maximum likelihood** (Adam gradient ascent on the
+  grouped multinomial log-likelihood; closed-form gradient `Σ (n_j − N·P_j)·x_j`).
+- **Category elasticity** by **two-way fixed-effects** regression of
+  `log(volume)` on `log(price)` (iterative demeaning).
+- **Validation**: a **parameter-recovery test** — fit a *hidden* coefficient set
+  blind, confirm recovery + out-of-sample backtest (MAPE, R²) — so the
+  estimation code is proven correct before it's trusted on real data.
 
-- **Logit coefficients** (`β_price`, `β_apr`, `β_ev`, per-nameplate `α`):
-  maximum-likelihood estimation via **Adam gradient ascent** on the grouped
-  multinomial log-likelihood. The gradient is closed-form:
-  `∂LL/∂θ = Σ (n_j − N·P_j) · x_j`.
-- **Category elasticity**: a **two-way fixed-effects** regression of
-  `log(volume)` on `log(price)` (region×segment and month×segment effects,
-  via iterative demeaning). Promo-driven price variation identifies the slope;
-  the fixed effects absorb seasonality and macro shocks.
-- **Validation**: the default run is a **parameter-recovery test** — generate
-  history from a *hidden* coefficient set, fit it blind, and confirm the
-  estimator (a) recovers the truth and (b) predicts months it never saw
-  (out-of-sample **MAPE** and **R²**). This proves the estimation code is
-  correct *before* it's trusted on real data.
-
-### 5. Why not deep learning / gradient-boosted trees?
-A black-box model trained on synthetic data generated from its own assumed
-elasticity just **recovers the generating function** — it looks impressive and
-proves nothing (and SHAP on it is decoration). A calibrated structural choice
-model is interpretable, identifiable, validatable against held-out actuals, and
-is what real OEM pricing science uses. When real history with genuine
-price/incentive **variation** is available, the same harness fits it — see the
-identification note in `--make-template`.
+### Why not deep learning / gradient-boosted trees?
+A black box trained on synthetic data generated from its own assumed elasticity
+just **recovers the generating function** — it proves nothing. A calibrated
+structural choice model is interpretable, identifiable, and validatable, and is
+what real OEM pricing science uses.
 
 > **Deep dive:** what we'd actually use with real data — a BLP random-coefficients
 > logit with instruments for price, and where ML legitimately fits (DML,
-> hierarchical Bayes, forecasting the nuisance layer) — is written up in
+> hierarchical Bayes, forecasting the nuisance layer) — is in
 > [`docs/demand-modeling-with-real-data.md`](docs/demand-modeling-with-real-data.md).
 
 ---
@@ -146,59 +117,47 @@ identification note in `--make-template`.
 ## Repository layout
 
 ```
-vpx_sim.py          Engine + CLI: v2 economics, optimizer, 15 invariant self-tests
-vpx_web.py          Engine ↔ JSON glue + scenario endpoints (shared local/serverless)
-vpx_app.py          Local dev server (http.server)
-vpx_store.py        Append-only scenario store on Turso (libSQL HTTP API)
-vpx_calibrate.py    Calibration + backtest harness
-index.html          Single-page UI (vanilla JS, CSS/SVG charts) — served at /
-api/*.py            Vercel serverless functions wrapping vpx_web
-docs/               Deep-dive notes (e.g. demand modeling with real data)
+index.html                       The whole app — UI + JS engine (deploy this)
+python/vpx_sim.py                 Reference engine + CLI + 15 invariant self-tests
+python/vpx_calibrate.py           Calibration + backtest harness
+docs/                            Deep-dive notes (demand modeling with real data)
 ```
 
 ---
 
-## Run locally
+## Run it
+
+**The app** — open `index.html` in a browser, or serve the folder:
 
 ```bash
-python3 vpx_app.py                 # → http://127.0.0.1:8765   (no dependencies)
+python3 -m http.server 8765      # → http://127.0.0.1:8765
 ```
 
-CLI tools:
+**The Python reference / calibration:**
 
 ```bash
-python3 vpx_sim.py optimize        # the optimizer, in the terminal
-python3 vpx_sim.py --selftest      # 15 economic invariants
-python3 vpx_calibrate.py           # parameter-recovery + backtest demo
+cd python
+python3 vpx_sim.py optimize          # the optimizer, in the terminal
+python3 vpx_sim.py --selftest        # 15 economic invariants
+python3 vpx_calibrate.py             # parameter-recovery + backtest demo
 python3 vpx_calibrate.py --make-template      # CSV schema for real data
 python3 vpx_calibrate.py --data history.csv   # calibrate on a real panel
 ```
 
 ---
 
-## Deploy on Vercel
+## Deploy
 
-1. Import the repo at **vercel.com/new** — no build command, no framework
-   preset. It's zero-config: `index.html` is served at `/` and each `api/*.py`
-   is an auto-detected Python serverless function. Deploy.
-2. **That's it.** It runs with **zero environment variables**; saved scenarios
-   persist per-browser via `localStorage`.
+It's a static site — import the repo into **Vercel** (or Netlify, GitHub Pages,
+Cloudflare Pages, …):
 
-Optional — **shared, server-side scenarios** via Turso:
+- **Framework preset:** Other / None
+- **Build command:** none
+- **Output directory:** the repo root (it just serves `index.html`)
+- **Environment variables:** none
 
-```bash
-turso db create vpx
-turso db show vpx --url        # → libsql://vpx-<org>.turso.io
-turso db tokens create vpx
-```
-Set in Vercel → Settings → Environment Variables, then redeploy:
-```
-TURSO_DATABASE_URL = libsql://vpx-<org>.turso.io
-TURSO_AUTH_TOKEN   = <token>
-```
-The `scenarios` table auto-creates on first save (append-only: every
-save/rename/delete is a new versioned row — nothing is overwritten or
-hard-deleted). The frontend switches to server mode automatically.
+No serverless functions, no runtime, no database. Saved scenarios live in each
+visitor's browser via `localStorage`.
 
 ---
 
