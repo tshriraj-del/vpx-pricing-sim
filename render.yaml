@@ -1,6 +1,6 @@
 # Render static-site deployment for the VPX demo.
 # Import repo → Render will auto-detect this file.
-# No build step, no env vars needed — just serves index.html.
+# No build step, no env vars needed, just serves index.html.
 services:
   - type: web
     name: vpx-pricing-demo

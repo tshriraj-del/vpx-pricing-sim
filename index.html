@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VPX — Vehicle Pricing Simulator</title>
+<title>VPX: Vehicle Pricing Simulator</title>
 <style>
   :root{
     --navy:#0A1628; --navy2:#13233b; --red:#EB0A1E; --ink:#1b2533; --muted:#7a8699;
@@ -157,10 +157,10 @@
 
     <div class="panel" id="comparePanel" style="margin-top:18px">
       <h2>Scenario comparison
-        <span id="scount" class="flat" style="text-transform:none;letter-spacing:0;font-weight:400">— none saved</span></h2>
+        <span id="scount" class="flat" style="text-transform:none;letter-spacing:0;font-weight:400">none saved</span></h2>
       <div class="pad" id="compareEmpty">
         <div class="hint" style="padding:0">Tune the levers (or run <b>Optimize</b>), then hit
-          <b>💾 Save scenario</b> to capture it. Compare up to 3 side by side against baseline —
+          <b>💾 Save scenario</b> to capture it. Compare up to 3 side by side against baseline:
           KPI table plus a normalized radar overlay.</div>
       </div>
       <div id="compareBody" style="display:none">
@@ -177,7 +177,7 @@
 
 <script>
 // ===========================================================================
-// VPX engine — client-side port of vpx_sim.py (the validated reference).
+// VPX engine: client-side port of vpx_sim.py (the validated reference).
 // Pure functions, deterministic. Keeps the demo backend-free (static site).
 // ===========================================================================
 const VPX = (function(){
@@ -369,7 +369,7 @@ const pct = x => (x*100).toFixed(1)+'%';
 
 function deltaHTML(cur, base, opts={}){
   const d = cur-base; const goodUp = opts.goodUp!==false;
-  if(Math.abs(d) < (opts.eps||1e-6)) return '<span class="flat">— flat</span>';
+  if(Math.abs(d) < (opts.eps||1e-6)) return '<span class="flat">flat</span>';
   const up = d>0, good = (up===goodUp);
   const cls = good?'delta-up':'delta-dn'; const arr = up?'▲':'▼';
   let v;
@@ -450,7 +450,7 @@ async function saveScenario(){
     const r=await fetch('/api/scenarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
     const d=await r.json(); SCENARIOS=normalizeServer(d.scenarios);
   } else {
-    if(SCENARIOS.length>=3){ toast('Max 3 scenarios — delete one to save another.'); return; }
+    if(SCENARIOS.length>=3){ toast('Max 3 scenarios, delete one to save another.'); return; }
     SCENARIOS.push({id:'s'+Date.now(), ...rec}); persistLocal();
   }
   renderCompare(); toast('Scenario saved.');
@@ -494,7 +494,7 @@ function radarSVG(cols){
 }
 
 function renderCompare(){
-  $('#scount').textContent = SCENARIOS.length ? '— '+SCENARIOS.length+' saved (max 3)' : '— none saved';
+  $('#scount').textContent = SCENARIOS.length ? SCENARIOS.length+' saved (max 3)' : 'none saved';
   const has = SCENARIOS.length>0;
   $('#compareEmpty').style.display = has?'none':'block';
   $('#compareBody').style.display = has?'block':'none';
@@ -640,7 +640,7 @@ async function runOptimize(){
     c(b.budget,'Subsidy budget',b.budget_detail);
   $('#optout').style.display='block';
   render(r.result);
-  toast('Optimized — '+r.evals+' evaluations. Sliders updated to the recommended plan.');
+  toast('Optimized: '+r.evals+' evaluations. Sliders updated to the recommended plan.');
   $('#optimize').textContent='⚡ Optimize'; $('#optimize').disabled=false;
 }
 

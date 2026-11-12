@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-VPX v2 — Calibration & backtest harness
+VPX v2, Calibration & backtest harness
 =======================================
 
 Turns the simulator from "well-reasoned guesses" into "a model fit to data."
-Pure standard library (no numpy/scipy) — it implements the econometrics by hand.
+Pure standard library (no numpy/scipy), it implements the econometrics by hand.
 
 Two jobs:
 
   1. PROVE THE MACHINERY (default run).
      Generate 36 months of synthetic history from a *hidden* "true" set of
-     coefficients — WITH realistic promo-driven price variation, seasonality,
+     coefficients, WITH realistic promo-driven price variation, seasonality,
      a macro cycle, and noise. The fitter is NOT told the true values. We then
      check it (a) RECOVERS them and (b) PREDICTS held-out months it never saw.
      This is a parameter-recovery test: it validates the fitting code itself,
@@ -27,11 +27,11 @@ What gets fit:
     intercept (alpha) per nameplate, by maximum likelihood (Adam gradient
     ascent on the grouped log-likelihood).
   * Category-size elasticity: two-way fixed-effects (region x segment and
-    month x segment) regression of log(volume) on log(price) — promo variation
+    month x segment) regression of log(volume) on log(price), promo variation
     identifies it; the FE absorb seasonality and macro.
 
 Honest scope: a passing recovery test proves the harness works. Whether the
-model *form* matches reality is a separate question only REAL data answers —
+model *form* matches reality is a separate question only REAL data answers -
 and identifying price elasticity needs price/incentive VARIATION, which open
 aggregate sales data mostly lacks (see --make-template notes).
 """
@@ -48,7 +48,7 @@ import vpx_sim as E
 G, R, GR, B, X = E.GREEN, E.RED, E.GRAY, E.BOLD, E.RESET
 
 # --------------------------------------------------------------------------- #
-# The "true" data-generating process — HIDDEN from the fitter                  #
+# The "true" data-generating process, HIDDEN from the fitter                  #
 # --------------------------------------------------------------------------- #
 
 TRUE = {
@@ -400,7 +400,7 @@ def run_recovery_demo(seed: int = 7) -> int:
         print(GR + "  The fitting machinery is correct. It is ready to point at real data." + X)
         print(GR + "  (Whether the model FORM fits reality is what real data then tells you.)" + X)
     else:
-        print(R + B + "  VERDICT: recovery/backtest outside tolerance — inspect before trusting." + X)
+        print(R + B + "  VERDICT: recovery/backtest outside tolerance, inspect before trusting." + X)
     print()
     return 0 if ok else 1
 
@@ -447,16 +447,16 @@ def run_on_data(path: str) -> int:
     print("    units R^2    {:.3f}".format(bt["r2"]))
     print()
     if bt["units_mape"] < 0.10:
-        print(G + "  Backtest within 10% — the model form holds on this data." + X)
+        print(G + "  Backtest within 10%, the model form holds on this data." + X)
     else:
-        print(R + "  Backtest > 10% — the model form needs work on this data "
+        print(R + "  Backtest > 10%, the model form needs work on this data "
                   "(re-spec demand, add features, or check data quality)." + X)
     print()
     return 0
 
 
 TEMPLATE_NOTE = """\
-# VPX calibration panel — one row per (option x region x month).
+# VPX calibration panel, one row per (option x region x month).
 # Columns:
 #   month     integer period index (0,1,2,... ascending in time)
 #   region    region id (e.g. na, eu, jp)            -- any consistent labels

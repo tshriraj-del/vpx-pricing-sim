@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-VPX v2 — Vehicle Pricing Simulator (working prototype)
+VPX v2, Vehicle Pricing Simulator (working prototype)
 ======================================================
 
 A self-contained, pure-standard-library implementation of the *corrected* v2
@@ -22,7 +22,7 @@ What this proves (the v2 corrections, all live in here):
   * Leasing & residuals modeled, with residual-risk exposure surfaced.
   * Finance subvention is a labeled contribution-margin cost, not a price cut.
   * FX is a consolidated-USD translation layer (margin% invariant; absolute
-    USD moves) — demonstrable via the `fx_shock` scenario.
+    USD moves), demonstrable via the `fx_shock` scenario.
 
 Run:
     python3 vpx_sim.py                 # baseline dashboard
@@ -64,7 +64,7 @@ class Params:
 
 
 # --------------------------------------------------------------------------- #
-# 1. Synthetic data — deterministic, no randomness needed for the baseline    #
+# 1. Synthetic data, deterministic, no randomness needed for the baseline    #
 # --------------------------------------------------------------------------- #
 
 
@@ -134,7 +134,7 @@ REGIONS: List[Region] = [
     Region("me",   "Middle East",        1.05, 0.40, 0.90),
 ]
 
-# Monthly production capacity (units/mo) per vehicle — a binding-capable ceiling.
+# Monthly production capacity (units/mo) per vehicle, a binding-capable ceiling.
 CAPACITY: Dict[str, float] = {
     "camry": 115000, "crown": 30000, "rav4": 98000,
     "tacoma": 95000, "tundra": 18000, "prius": 80000,
@@ -236,7 +236,7 @@ def _our_consumer_price(v: Vehicle, r: Region, lv: Lever, p: Params) -> Tuple[fl
                   + (lv.fleet_discount * list_price) * p.fleet_mix)
     oem_net = market_price - oem_funded
 
-    # third-party / consumer-side benefits — DO NOT touch OEM revenue
+    # third-party / consumer-side benefits, DO NOT touch OEM revenue
     ev_credit = lv.ev_credit if v.ev_eligible else 0.0
     consumer_price = oem_net - ev_credit - lv.state_incentive
     return list_price, oem_net, consumer_price
@@ -559,7 +559,7 @@ PRESETS = {
 
 
 # --------------------------------------------------------------------------- #
-# 7. Self-test (property invariants — the v2 rigor, runnable)                  #
+# 7. Self-test (property invariants, the v2 rigor, runnable)                  #
 # --------------------------------------------------------------------------- #
 
 
@@ -583,7 +583,7 @@ def selftest() -> int:
     check(0.0 < base_k.market_share < 1.0, "weighted market share in (0,1)")
     check(base_k.revenue_usd > 0, "baseline revenue positive")
 
-    # EV credit must NOT change OEM revenue (only demand) — the v1 bug guard
+    # EV credit must NOT change OEM revenue (only demand), the v1 bug guard
     sc = Scenario(name="ev-credit-only",
                   levers={"prius": Lever(ev_credit=7500)})
     base_idx = {(c.vid, c.rid): c.units for c in base_cells}
@@ -605,7 +605,7 @@ def selftest() -> int:
 
     # fx shock: every PER-CELL margin% is invariant (fx cancels in rev/cogs),
     # absolute consolidated USD revenue falls. NB: the *blended* margin% may
-    # move because fx reweights the regional mix — that's correct, not a bug.
+    # move because fx reweights the regional mix, that's correct, not a bug.
     fx_cells, fx_k = run(preset_fx_shock(), base_idx)
     base_cell_m = {(c.vid, c.rid): c.margin_pct for c in base_cells}
     per_cell_invariant = all(
@@ -805,7 +805,7 @@ def report_optimum(best: Eval, base_cells: List[Cell], base_k: KPIs,
         subv = apr < mkt - 1e-9
         pcol = GREEN if pd > 0 else (RED if pd < 0 else GRAY)
         apr_s = "{:.1f}%".format(apr * 100) if subv else GRAY + "market" + RESET
-        sub_s = (GREEN + "−{:.1f}pts".format((mkt - apr) * 100) + RESET) if subv else GRAY + "—" + RESET
+        sub_s = (GREEN + "−{:.1f}pts".format((mkt - apr) * 100) + RESET) if subv else GRAY + "-" + RESET
         print("  {:<8}{}{:>+11.1f}%{}{:>14}{:>25}".format(
             name_by[vid], pcol, pd * 100, RESET, apr_s, sub_s))
     print("  " + "-" * 70)
